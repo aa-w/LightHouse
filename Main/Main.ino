@@ -19,10 +19,17 @@
 #define SLEEPTIMERVALUE 50
 
 //LED Set Up
+
+#define TURNONTIME 3000
+#define TURNOFFTIME 3000
+#define UPDATETIME 50
+
 #define NUM_LEDS    5
 int Brightness = 100;
 int LedBrightness = 0;
 int PreLedBrightness = 0;
+int Reading = 0;
+
 #define LED_TYPE    WS2811
 #define COLOR_ORDER RGB
 //Constants
@@ -37,88 +44,54 @@ void setup()
   Serial.begin(115200);
 
   FastLED.addLeds<LED_TYPE, LEDPIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
-  FastLED.setBrightness(BRIGHTNESS);
+  //FastLED.setBrightness(BRIGHTNESS);
 
   //LDR Setup
   pinMode(6, OUTPUT);
 }
 
-
-int Reading = 0;
-int Timer = 0;
-unsigned long TurnOnTime = 0;
 void loop()
 {
-
-  //Serial.print("State: ");
-  //Serial.println(State);
-
-  if (millis() > Timer)
+  CheckLDR();
+  if (Reading < 450 && State == 0)
   {
-    Reading = CheckLDR();
-    if (Reading < 450)
-    {
+    LedBrightness = (Brightness - (Reading / 10));
 
-      LedBrightness = (Brightness - (Reading / 10));
-      Serial.print("LedBrightness: ");
-      Serial.println(LedBrightness);
-
-      if (State == 0)
-      {
-        TurnOnTime = millis();
-        State = 3;
-      }
-      else
-      {
-        State = 1;
-      }
-      Timer = millis() + TIMERVALUE;
-    }
-    else
-    {
-      if (State == 1)
-      {
-        State = 4;
-      }
-      else
-      {
-        State = 0;
-      }
-
-      Timer = millis() + SLEEPTIMERVALUE;
-    }
+    State = 3;
   }
+  else if (Reading > 450 && State == 1)
+  {
+    LedBrightness = (Brightness - (Reading / 10));
+    State = 4;
+  }
+  Serial.print("LedBrightness: ");
+  Serial.println(LedBrightness);
 
   switch (State)
   {
     case 0: //keep lights off
       {
-        leds[0].setRGB( 0, 0, 0);
-        leds[1].setRGB( 0, 0, 0);
-        leds[2].setRGB( 0, 0, 0);
-        leds[3].setRGB( 0, 0, 0);
-        leds[4].setRGB( 0, 0, 0);
+
         FastLED.show();
         delay(10);
+        break;
       }
     case 1: //keep lights on
       {
-        leds[0].setRGB( 201, 160, 46);
-        leds[1].setRGB( 201, 160, 46);
-        leds[2].setRGB( 201, 160, 46);
-        leds[3].setRGB( 201, 160, 46);
-        leds[4].setRGB( 201, 160, 46);
+
         FastLED.show();
         delay(10);
+        break;
       }
-      case 3: //turn lights on slowly
+    case 3: //turn lights on slowly
       {
-        unsigned long OnBrightnessValue = millis() - TurnOnTime;
-        
+        TurnLightsOn();
+        break;
       }
-      case 4: //turn lights off slowly
+    case 4: //turn lights off slowly
       {
-        
+        TurnLightsOff();
+        break;
       }
   }
 
@@ -132,14 +105,79 @@ void loop()
   //keep checking the time for shut off time
 }
 
-int CheckLDR()
+void TurnLightsOn()
 {
-  int Reading = 0;
+  Serial.println("TurnLightsOn");
+  unsigned long OnTimer = millis() + TURNONTIME;
+  unsigned long UpdateTimer = millis() + UPDATETIME;
+  float BrightnessValue = (LedBrightness / (TURNONTIME / UPDATETIME));
+  Serial.print("BrightnessValue ");
+  Serial.println(BrightnessValue);
+  float BrightnessAdder = 0;
+  while (OnTimer > millis())
+  {
+    if (millis() > UpdateTimer)
+    {
+      BrightnessAdder = BrightnessAdder + BrightnessValue;
+      FastLED.setBrightness(BrightnessAdder);
+
+      for (byte i = 0; i != NUM_LEDS; i++)
+      {
+        leds[i] = CRGB::Orange;
+      }
+      Serial.print("TurnLightsOn BrightnessAdder: ");
+      Serial.println(BrightnessAdder);
+      FastLED.show();
+
+      UpdateTimer = millis() + UPDATETIME;
+    }
+  }
+}
+
+void TurnLightsOff()
+{
+  Serial.println("TurnLightsOff");
+  unsigned long OffTimer = millis() + TURNOFFTIME;
+  unsigned long UpdateTimer = millis() + UPDATETIME;
+  float BrightnessValue = (LedBrightness / (TURNOFFTIME / UPDATETIME));
+  float BrightnessAdder = LedBrightness;
+  while (OffTimer > millis())
+  {
+    if (millis() > UpdateTimer)
+    {
+      BrightnessAdder = BrightnessAdder - BrightnessValue;
+      FastLED.setBrightness(BrightnessAdder);
+
+      for (byte i = 0; i != NUM_LEDS; i++)
+      {
+        leds[i] = 0xFF9900;
+      }
+      FastLED.show();
+      Serial.print("TurnLightsOff BrightnessAdder: ");
+      Serial.println(BrightnessAdder);
+
+      UpdateTimer = millis() + UPDATETIME;
+    }
+  }
+}
+
+unsigned long DebugTimer = 0;
+
+void CheckLDR()
+{
   digitalWrite(6, HIGH);
   delay(5);
   Reading = analogRead(A4);
+
+  Serial.print("LedBrightness: ");
+  Serial.println(LedBrightness);
   digitalWrite(6, LOW);
+  if (millis() > DebugTimer)
+  {
+    Serial.print("Reading: ");
+    Serial.println(Reading);
+    DebugTimer = millis() + 500;
+  }
   //Serial.print("LDR ");
   //Serial.println(Reading);
-  return Reading;
 }
