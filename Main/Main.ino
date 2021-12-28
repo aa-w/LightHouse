@@ -53,7 +53,7 @@ void setup()
 void loop()
 {
   CheckLDR();
-  if (Reading < 450 && State == 0)
+  if (Reading < 500 && State == 0)
   {
     LedBrightness = (Brightness - (Reading / 10));
 
@@ -64,8 +64,8 @@ void loop()
     LedBrightness = (Brightness - (Reading / 10));
     State = 4;
   }
-  Serial.print("LedBrightness: ");
-  Serial.println(LedBrightness);
+  //Serial.print("LedBrightness: ");
+  //Serial.println(LedBrightness);
 
   switch (State)
   {
@@ -169,11 +169,12 @@ void CheckLDR()
   delay(5);
   Reading = analogRead(A4);
 
-  Serial.print("LedBrightness: ");
-  Serial.println(LedBrightness);
+
   digitalWrite(6, LOW);
   if (millis() > DebugTimer)
   {
+    Serial.print("LedBrightness: ");
+    Serial.println(LedBrightness);
     Serial.print("Reading: ");
     Serial.println(Reading);
     DebugTimer = millis() + 500;
