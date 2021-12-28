@@ -8,6 +8,7 @@
 
 // CONSTANTS //
 #include <FastLED.h>
+#include <math.h>
 
 //Arduino Pinout
 
@@ -20,27 +21,31 @@
 
 //LED Set Up
 
-#define TURNONTIME 3000
-#define TURNOFFTIME 3000
-#define UPDATETIME 50
-
+#define ARRAYSIZE 100
 #define NUM_LEDS    5
 
 const int LDRCALIBRATION = 320;
-const int LDRSCALE = 680;
+const int LDRSCALE = 400;
 
 float Brightness = 0;
 float ReadingCal = 0;
 int LedBrightness = 0;
+int LedBrightnessArray [ARRAYSIZE];
+byte AverageBrightness = 0;
+int PrevLedBrightness = 0;
+
+byte ArrayPointer = 0;
+
 
 int Reading = 0;
+unsigned long DebugTimer = 0;
 
 #define LED_TYPE    WS2811
 #define COLOR_ORDER RGB
+
 //Constants
 
 CRGB leds[NUM_LEDS];
-
 
 void setup()
 {
@@ -52,11 +57,27 @@ void setup()
 
   //LDR Setup
   pinMode(6, OUTPUT);
+  /*
+    for (byte i = 80; i != 100; i++)
+    {
+
+    float Accel = log(100 - i);
+    int LedBrightnessa = (255 - ((i - Accel) * 2.55));
+
+    Serial.print("Accel: ");
+    Serial.println(Accel);
+
+    Serial.print("LedBrightnessa: ");
+    Serial.println(LedBrightnessa);
+    }
+  */
+
 }
 
 void loop()
 {
 
+  //SimCheckLDR();
   CheckLDR();
 
   ReadingCal = (Reading - LDRCALIBRATION); //Brightness Percentage
@@ -68,64 +89,63 @@ void loop()
   {
     Brightness = 0;
   }
-  LedBrightness = 255 - (Brightness * 2.55); //Brightness Converted to inverted Byte Scale
+
+  if (Brightness < 100)
+  {
+    LedBrightness = 255 - (Brightness * 2.55); //Brightness Converted to inverted Byte Scale
+  }
+  else
+  {
+    LedBrightness = 0;
+  }
+
+  AverageBrightness = RollingAverage();
+
   UpdateLights();
 
+  PrevLedBrightness = AverageBrightness;
+  
   SerialDebugger();
-  //Serial.print("LedBrightness: ");
-  //Serial.println(LedBrightness);
-
-
-  //Serial.println(CheckLDR());
-  //boot up
-  //Serial.println("Starting...");
-  //look for time from gps
-  //compare to ldr readings
-  //if it's night enable lights
-  //animate lights
-  //keep checking the time for shut off time
 }
 
 void UpdateLights()
 {
-  FastLED.setBrightness(LedBrightness);
-
-  for (byte i = 0; i != NUM_LEDS; i++)
+  if (AverageBrightness != PrevLedBrightness)
   {
-    leds[i] = CRGB::Orange;
-  }
-  FastLED.show();
+    FastLED.setBrightness(AverageBrightness);
 
-}
-
-void TurnLightsOff()
-{
-  Serial.println("TurnLightsOff");
-  unsigned long OffTimer = millis() + TURNOFFTIME;
-  unsigned long UpdateTimer = millis() + UPDATETIME;
-  float BrightnessValue = (LedBrightness / (TURNOFFTIME / UPDATETIME));
-  float BrightnessAdder = LedBrightness;
-  while (OffTimer > millis())
-  {
-    if (millis() > UpdateTimer)
+    for (byte i = 0; i != NUM_LEDS; i++)
     {
-      BrightnessAdder = BrightnessAdder - BrightnessValue;
-      FastLED.setBrightness(BrightnessAdder);
-
-      for (byte i = 0; i != NUM_LEDS; i++)
-      {
-        leds[i] = 0xFF9900;
-      }
-      FastLED.show();
-      Serial.print("TurnLightsOff BrightnessAdder: ");
-      Serial.println(BrightnessAdder);
-
-      UpdateTimer = millis() + UPDATETIME;
+      leds[i] = CRGB::Yellow;
     }
+    FastLED.show();
+    //Serial.println("Update");
   }
+  Serial.println("No Update");
 }
 
+byte RollingAverage()
+{
+  LedBrightnessArray[ArrayPointer] = LedBrightness;
+  float AAverage = 0;
+  float AAdder = 0;
+  for (byte i = 0; i != ARRAYSIZE; i++)
+  {
+    AAdder = AAdder + LedBrightnessArray[i];
+  }
+  AAverage = AAdder / ARRAYSIZE;
 
+  //make array circular
+  if (ArrayPointer == (ARRAYSIZE - 1))
+  {
+    ArrayPointer = 0;
+  }
+  else
+  {
+    ArrayPointer++;
+  }
+  return AAverage;
+}
 
 void CheckLDR()
 {
@@ -135,7 +155,6 @@ void CheckLDR()
   digitalWrite(6, LOW);
 }
 
-unsigned long DebugTimer = 0;
 void SerialDebugger()
 {
   if (millis() > DebugTimer)
@@ -149,6 +168,6 @@ void SerialDebugger()
     Serial.print(" ReadingCal: ");
     Serial.println(ReadingCal);
 
-    DebugTimer = millis() + 500;
+    DebugTimer = millis() + 2000;
   }
 }
