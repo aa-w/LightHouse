@@ -25,9 +25,14 @@
 #define UPDATETIME 50
 
 #define NUM_LEDS    5
-int Brightness = 100;
+
+const int LDRCALIBRATION = 320;
+const int LDRSCALE = 680;
+
+float Brightness = 0;
+float ReadingCal = 0;
 int LedBrightness = 0;
-int PreLedBrightness = 0;
+
 int Reading = 0;
 
 #define LED_TYPE    WS2811
@@ -37,7 +42,6 @@ int Reading = 0;
 CRGB leds[NUM_LEDS];
 
 
-byte State = 0;
 void setup()
 {
   //Debug
@@ -52,48 +56,25 @@ void setup()
 
 void loop()
 {
-  CheckLDR();
-  if (Reading < 500 && State == 0)
-  {
-    LedBrightness = (Brightness - (Reading / 10));
 
-    State = 3;
-  }
-  else if (Reading > 450 && State == 1)
+  CheckLDR();
+
+  ReadingCal = (Reading - LDRCALIBRATION); //Brightness Percentage
+  if (ReadingCal > 0)
   {
-    LedBrightness = (Brightness - (Reading / 10));
-    State = 4;
+    Brightness = ((ReadingCal / LDRSCALE) * 100); //Brightness Percentage
   }
+  else
+  {
+    Brightness = 0;
+  }
+  LedBrightness = 255 - (Brightness * 2.55); //Brightness Converted to inverted Byte Scale
+  UpdateLights();
+
+  SerialDebugger();
   //Serial.print("LedBrightness: ");
   //Serial.println(LedBrightness);
 
-  switch (State)
-  {
-    case 0: //keep lights off
-      {
-
-        FastLED.show();
-        delay(10);
-        break;
-      }
-    case 1: //keep lights on
-      {
-
-        FastLED.show();
-        delay(10);
-        break;
-      }
-    case 3: //turn lights on slowly
-      {
-        TurnLightsOn();
-        break;
-      }
-    case 4: //turn lights off slowly
-      {
-        TurnLightsOff();
-        break;
-      }
-  }
 
   //Serial.println(CheckLDR());
   //boot up
@@ -105,33 +86,16 @@ void loop()
   //keep checking the time for shut off time
 }
 
-void TurnLightsOn()
+void UpdateLights()
 {
-  Serial.println("TurnLightsOn");
-  unsigned long OnTimer = millis() + TURNONTIME;
-  unsigned long UpdateTimer = millis() + UPDATETIME;
-  float BrightnessValue = (LedBrightness / (TURNONTIME / UPDATETIME));
-  Serial.print("BrightnessValue ");
-  Serial.println(BrightnessValue);
-  float BrightnessAdder = 0;
-  while (OnTimer > millis())
+  FastLED.setBrightness(LedBrightness);
+
+  for (byte i = 0; i != NUM_LEDS; i++)
   {
-    if (millis() > UpdateTimer)
-    {
-      BrightnessAdder = BrightnessAdder + BrightnessValue;
-      FastLED.setBrightness(BrightnessAdder);
-
-      for (byte i = 0; i != NUM_LEDS; i++)
-      {
-        leds[i] = CRGB::Orange;
-      }
-      Serial.print("TurnLightsOn BrightnessAdder: ");
-      Serial.println(BrightnessAdder);
-      FastLED.show();
-
-      UpdateTimer = millis() + UPDATETIME;
-    }
+    leds[i] = CRGB::Orange;
   }
+  FastLED.show();
+
 }
 
 void TurnLightsOff()
@@ -161,24 +125,30 @@ void TurnLightsOff()
   }
 }
 
-unsigned long DebugTimer = 0;
+
 
 void CheckLDR()
 {
   digitalWrite(6, HIGH);
   delay(5);
   Reading = analogRead(A4);
-
-
   digitalWrite(6, LOW);
+}
+
+unsigned long DebugTimer = 0;
+void SerialDebugger()
+{
   if (millis() > DebugTimer)
   {
-    Serial.print("LedBrightness: ");
-    Serial.println(LedBrightness);
-    Serial.print("Reading: ");
-    Serial.println(Reading);
+    Serial.print(" Reading: ");
+    Serial.print(Reading);
+    Serial.print(" Brightness: ");
+    Serial.print(Brightness);
+    Serial.print(" LedBrightness: ");
+    Serial.print(LedBrightness);
+    Serial.print(" ReadingCal: ");
+    Serial.println(ReadingCal);
+
     DebugTimer = millis() + 500;
   }
-  //Serial.print("LDR ");
-  //Serial.println(Reading);
 }
