@@ -1,7 +1,7 @@
 /*
-    _   _    _____  __ __      _____   ___  ___  _    _____   __
-   /_\ | |  | __\ \/ / \ \    / / _ \ / _ \|   \| |  | __\ \ / /
-  / _ \| |__| _| >  <   \ \/\/ / (_) | (_) | |) | |__| _| \ V /
+     _   _    _____  __ __      _____   ___  ___  _    _____   __
+    /_\ | |  | __\ \/ / \ \    / / _ \ / _ \|   \| |  | __\ \ / /
+   / _ \| |__| _| >  <   \ \/\/ / (_) | (_) | |) | |__| _| \ V /
   /_/ \_\____|___/_/\_\   \_/\_/ \___/ \___/|___/|____|___| |_|
 
 */
@@ -106,8 +106,39 @@ void loop()
   PrevLedBrightness = AverageBrightness;
   
   SerialDebugger();
-}
 
+  switch(State)
+  {
+    case 0: //Lights On normally
+    {
+      break;
+    }
+    case 1: //Start Timer
+    {
+      break;
+    }
+    case 2: //Timer Triggered
+    {
+      break;
+    }
+    case 3:
+    {
+      break;
+    }
+    default:
+    {
+      Serial.println("Default case run");
+      break;
+    }
+  }
+}
+//loop normally
+//if lights are on start timer
+//if lights go off stop timer
+//if timer clocks out turn lights off
+//if lights now turn off reset timer
+
+byte State = 0;
 void UpdateLights()
 {
   if (AverageBrightness != PrevLedBrightness)
