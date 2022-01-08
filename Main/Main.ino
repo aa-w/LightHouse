@@ -20,12 +20,16 @@
 
 #define TRENDTIMERVALUE 600000 //Ten minutes per average
 #define SWITCHOFFTIMERVALUE 18000000 //Switch off after 6 hours
+#define FADEVALUE 1000
 
 //LED Set Up
-
 #define ARRAYSIZE 100
 #define TRENDARRAYSIZE 10
 #define NUM_LEDS    5
+
+unsigned long WindowTimer = 0;
+bool WindowState [] = {true, true, true, true, true};
+bool WindowUpdate = false;
 
 const int LDRCALIBRATION = 300;
 const int LDRSCALE = 400;
@@ -37,6 +41,7 @@ int LedBrightnessArray [ARRAYSIZE];
 byte AverageBrightness = 0;
 int PrevLedBrightness = 0;
 byte LedTrendAverage = 0;
+
 
 byte ArrayPointer = 0;
 byte TrendArrayPointer = 0;
@@ -73,7 +78,6 @@ void setup()
 void loop()
 {
 
-  //SimCheckLDR();
   CheckLDR();
 
   ReadingCal = (Reading - LDRCALIBRATION); //Brightness Percentage
@@ -94,6 +98,8 @@ void loop()
   {
     LedBrightness = 0;
   }
+
+  ToggleWindows();
 
   AverageBrightness = RollingAverage();
 
@@ -179,24 +185,55 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
   Serial.println("Return to main");
 }
 
-void UpdateLights()
+void ToggleWindows() //occationally turn on and off side window
 {
-  if (AverageBrightness != PrevLedBrightness)
+  if (millis() > WindowTimer)
   {
-
-    FastLED.setBrightness(AverageBrightness);
     for (byte i = 0; i != NUM_LEDS; i++)
     {
-      leds[i] = CRGB::Yellow;
-      //      Serial.print(i);
-      //      Serial.print(", ");
-      //      Serial.print(DitheredBrightness);
-      //      Serial.println(", ");
+      int Chance = random(0, 5);
+      if (Chance == 1)
+      {
+        WindowState[i] = false;
+      }
+      else
+      {
+        WindowState[i] = true;
+      }
+      Serial.print(WindowState[i] );
+      Serial.print(", ");
+    }
+    Serial.println("");
+    int TimerChange = random(1, 5);
+    unsigned long MillisBuffer = (TimerChange * 5000);//60000
+    WindowTimer = millis() + MillisBuffer;
+    WindowUpdate = true;
+  }
+}
+byte hue = 0;
+//leds[i] = CHSV(hue,255,128); 
+void UpdateLights()
+{
+  if ((AverageBrightness != PrevLedBrightness) || (WindowUpdate == true))//only update when values have changed
+  {
+    FastLED.setBrightness(AverageBrightness);
+
+    for (byte i = 0; i != NUM_LEDS; i++)
+    {
+      if (WindowState[i] == true)
+      {
+        //leds[i] = CRGB::Yellow; //Side window
+        leds[i] = CHSV(50,255,255); 
+        hue++;
+      }
+      else
+      {
+        leds[i] = CRGB::Black;
+      }
     }
     FastLED.show();
-    //Serial.println("Update");
   }
-  //Serial.println("No Update");
+  WindowUpdate = false;
 }
 
 byte RollingAverage()
@@ -267,7 +304,7 @@ void SerialDebugger()
     Serial.print(" ReadingCal: ");
     Serial.println(ReadingCal);
 
-    DebugTimer = millis() + 2000;
+    DebugTimer = millis() + 10;
   }
 
 }
