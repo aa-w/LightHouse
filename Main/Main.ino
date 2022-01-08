@@ -14,17 +14,20 @@
 
 #define LEDPIN 10
 #define LDRPIN 6
-#define LDRREAD A4
+#define LDRREAD A1
 
 #define TIMERVALUE 30
-#define SLEEPTIMERVALUE 50
+
+#define TRENDTIMERVALUE 600000
+#define SWITCHOFFTIMERVALUE 18000000
 
 //LED Set Up
 
 #define ARRAYSIZE 100
+#define TRENDARRAYSIZE 10
 #define NUM_LEDS    5
 
-const int LDRCALIBRATION = 320;
+const int LDRCALIBRATION = 300;
 const int LDRSCALE = 400;
 
 float Brightness = 0;
@@ -33,15 +36,23 @@ int LedBrightness = 0;
 int LedBrightnessArray [ARRAYSIZE];
 byte AverageBrightness = 0;
 int PrevLedBrightness = 0;
+byte LedTrendAverage = 0;
 
 byte ArrayPointer = 0;
+byte TrendArrayPointer = 0;
 
+byte MinBrightness = 60;
 
+int LedTrendAverageArray [TRENDARRAYSIZE];
 int Reading = 0;
-unsigned long DebugTimer = 0;
 
-#define LED_TYPE    WS2811
-#define COLOR_ORDER RGB
+unsigned long DebugTimer = 0;
+unsigned long TrendTimer = 0;
+bool TimerStarted = false;
+unsigned long SwitchOffTimer = 0;
+
+#define LED_TYPE    WS2812B
+#define COLOR_ORDER GRB
 
 //Constants
 
@@ -52,25 +63,10 @@ void setup()
   //Debug
   Serial.begin(115200);
 
-  FastLED.addLeds<LED_TYPE, LEDPIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection( TypicalLEDStrip );
-  //FastLED.setBrightness(BRIGHTNESS);
+  FastLED.addLeds<LED_TYPE, LEDPIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   //LDR Setup
   pinMode(6, OUTPUT);
-  /*
-    for (byte i = 80; i != 100; i++)
-    {
-
-    float Accel = log(100 - i);
-    int LedBrightnessa = (255 - ((i - Accel) * 2.55));
-
-    Serial.print("Accel: ");
-    Serial.println(Accel);
-
-    Serial.print("LedBrightnessa: ");
-    Serial.println(LedBrightnessa);
-    }
-  */
 
 }
 
@@ -104,24 +100,100 @@ void loop()
   UpdateLights();
 
   PrevLedBrightness = AverageBrightness;
-  
-  SerialDebugger();
+
+  if (millis() > TrendTimer)
+  {
+    UpdateTrend();
+    TrendTimer = millis() + TRENDTIMERVALUE;
+    Serial.print("Trend: ");
+    Serial.println(LedTrendAverage);
+  }
+
+  if ((TimerStarted == false) && (LedTrendAverage > 80))
+  {
+    SwitchOffTimer = millis() + SWITCHOFFTIMERVALUE;
+
+    Serial.print("TimerStarted: ");
+    Serial.println(TimerStarted);
+
+    TimerStarted = true;
+  }
+
+  if ((TimerStarted == true) && (millis() > SwitchOffTimer))
+  {
+    WaitTillWake();
+  }
+
+  //SerialDebugger();
+}
+
+void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
+{
+  Serial.println("SleepTillWake Triggered");
+
+  bool Sleep = true;
+  unsigned long WaitTimer = 0;
+
+  //RampLightsDown();
+
+  FastLED.setBrightness(0);
+  for (byte i = 0; i != NUM_LEDS; i++)
+  {
+    leds[i] = CRGB::Black;
+  }
+  FastLED.show();
+
+  while (Sleep == true)
+  {
+    if (millis() > WaitTimer)
+    {
+      CheckLDR();
+
+      ReadingCal = (Reading - LDRCALIBRATION); //Brightness Percentage
+      if (ReadingCal > 0)
+      {
+        Brightness = ((ReadingCal / LDRSCALE) * 100); //Brightness Percentage
+        Serial.print("Brightness: ");
+        Serial.println(Brightness);
+      }
+      else
+      {
+        Brightness = 0;
+      }
+
+      if (Brightness > MinBrightness)
+      {
+        Serial.print("Brightness: ");
+        Serial.println(Brightness);
+        Serial.println("Sleep Ended");
+        Sleep = false;
+      }
+      WaitTimer = millis() + 10000;
+    }
+  }
+
+  TimerStarted = false; //reset the timer for the next sequence
+  Serial.println("Return to main");
 }
 
 void UpdateLights()
 {
   if (AverageBrightness != PrevLedBrightness)
   {
-    FastLED.setBrightness(AverageBrightness);
 
+    FastLED.setBrightness(AverageBrightness);
     for (byte i = 0; i != NUM_LEDS; i++)
     {
       leds[i] = CRGB::Yellow;
+      //      Serial.print(i);
+      //      Serial.print(", ");
+      //      Serial.print(DitheredBrightness);
+      //      Serial.println(", ");
     }
     FastLED.show();
     //Serial.println("Update");
   }
-  Serial.println("No Update");
+  //Serial.println("No Update");
 }
 
 byte RollingAverage()
@@ -147,11 +219,35 @@ byte RollingAverage()
   return AAverage;
 }
 
+void UpdateTrend()
+{
+  LedTrendAverageArray[TrendArrayPointer] = LedBrightness;
+  float AAverage = 0;
+  float AAdder = 0;
+  for (byte i = 0; i != TRENDARRAYSIZE; i++)
+  {
+    //Serial.println(LedTrendAverageArray[i]);
+    AAdder = AAdder + LedTrendAverageArray[i];
+  }
+  AAverage = AAdder / TRENDARRAYSIZE;
+
+  //make array circular
+  if (TrendArrayPointer == (TRENDARRAYSIZE - 1))
+  {
+    TrendArrayPointer = 0;
+  }
+  else
+  {
+    TrendArrayPointer++;
+  }
+  LedTrendAverage = AAverage;
+}
+
 void CheckLDR()
 {
   digitalWrite(6, HIGH);
   delay(5);
-  Reading = analogRead(A4);
+  Reading = analogRead(A1);
   digitalWrite(6, LOW);
 }
 
@@ -170,4 +266,5 @@ void SerialDebugger()
 
     DebugTimer = millis() + 2000;
   }
+
 }
