@@ -21,11 +21,24 @@
 #define TRENDTIMERVALUE 600000 //Ten minutes per average
 #define SWITCHOFFTIMERVALUE 18000000 //Switch off after 6 hours
 #define FADEVALUE 1000
+#define DISCOLENGTH 5000
 
 //LED Set Up
 #define ARRAYSIZE 100
 #define TRENDARRAYSIZE 10
+#define TOUCHARRAYSIZE 10
+
 #define NUM_LEDS    5
+
+//Touch Logic
+#define MINTOUCH 100
+#define MAXTOUCH 1000
+#define INSTANCETIME 10000
+#define NUMTOUCHES 3
+
+#define LED_TYPE    WS2812B
+#define COLOR_ORDER GRB
+
 
 unsigned long WindowTimer = 0;
 bool WindowState [] = {true, true, true, true, true};
@@ -33,6 +46,8 @@ bool WindowUpdate = false;
 
 const int LDRCALIBRATION = 300;
 const int LDRSCALE = 400;
+
+float TouchBrightness [TOUCHARRAYSIZE];
 
 float Brightness = 0;
 float ReadingCal = 0;
@@ -45,6 +60,7 @@ byte LedTrendAverage = 0;
 
 byte ArrayPointer = 0;
 byte TrendArrayPointer = 0;
+byte TouchBrightnessPointer = 0;
 
 byte MinBrightness = 60;
 
@@ -56,8 +72,13 @@ unsigned long TrendTimer = 0;
 bool TimerStarted = false;
 unsigned long SwitchOffTimer = 0;
 
-#define LED_TYPE    WS2812B
-#define COLOR_ORDER GRB
+bool TimeTrigger = false;
+bool CountTouches = false;
+byte TouchCount = 0;
+unsigned long MaxTouchTimer = 0;
+
+unsigned long TouchStartTime = 0;
+unsigned long TouchStopTime = 0;
 
 //Constants
 
@@ -107,9 +128,11 @@ void loop()
 
   PrevLedBrightness = AverageBrightness;
 
+  CheckForTouches();
+
   SleepChecker();
 
-  SerialDebugger();
+  //SerialDebugger();
 }
 
 void SleepChecker() //Checks for sleeping trends over time
@@ -210,8 +233,8 @@ void ToggleWindows() //occationally turn on and off side window
     WindowUpdate = true;
   }
 }
-byte hue = 0;
-//leds[i] = CHSV(hue,255,128); 
+
+//leds[i] = CHSV(hue,255,128);
 void UpdateLights()
 {
   if ((AverageBrightness != PrevLedBrightness) || (WindowUpdate == true))//only update when values have changed
@@ -223,8 +246,8 @@ void UpdateLights()
       if (WindowState[i] == true)
       {
         //leds[i] = CRGB::Yellow; //Side window
-        leds[i] = CHSV(50,255,255); 
-        hue++;
+        leds[i] = CHSV(50, 255, 255);
+        //hue++;
       }
       else
       {
@@ -257,6 +280,113 @@ byte RollingAverage()
     ArrayPointer++;
   }
   return AAverage;
+}
+
+//When the brightness is at 0 and before higher
+//Start a timer which stops when it rises back up
+//If that time equals a second that count as one
+//Start another timer which touches must happen in
+//Clear the count if touches dont happen within the time region
+
+
+void CheckForTouches()
+{
+  TouchBrightness[TouchBrightnessPointer] = Brightness;
+
+  byte CompPointer = 0;
+  if (TouchBrightnessPointer == 0)
+  {
+    CompPointer = (TOUCHARRAYSIZE - 1);
+  }
+  else
+  {
+    CompPointer = (TouchBrightnessPointer - 1);
+  }
+
+  if ((millis() > MaxTouchTimer) && (CountTouches == true))
+  {
+    Serial.println("TouchReset");
+    CountTouches = false;
+    TouchCount = 0;
+  }
+
+  if (TimeTrigger == false) //we havent started timing yet
+  {
+    if ((TouchBrightness[TouchBrightnessPointer] == 0) && (TouchBrightness[CompPointer] > 0))
+    {
+      TouchStartTime = millis();
+      TimeTrigger = true;
+    }
+  }
+  else
+  {
+    if ((TouchBrightness[TouchBrightnessPointer] > 0) && (TouchBrightness[CompPointer] == 0))
+    {
+      TouchStopTime = millis();
+      TimeTrigger = false;
+      unsigned long TouchedTime = TouchStopTime - TouchStartTime;
+      if ((TouchedTime > MINTOUCH) && (TouchedTime < MAXTOUCH))
+      {
+        if (CountTouches == false)
+        {
+          CountTouches = true;
+          TouchCount = 1;
+          MaxTouchTimer = millis() + INSTANCETIME;
+          Serial.println("Touch Started");
+        }
+        else //touch count already started
+        {
+          if (millis() < MaxTouchTimer)
+          {
+            TouchCount++;
+            Serial.print("TouchCount: ");
+            Serial.println(TouchCount);
+            if (TouchCount > NUMTOUCHES)
+            {
+              //touch count hit its disco time
+              DiscoRoutine();
+              CountTouches = false;
+              TouchCount = 0;
+            }
+          }
+          else //Touches timed out clear all
+          {
+            Serial.print("TouchReset");
+            CountTouches = false;
+            TouchCount = 0;
+          }
+        }
+      }
+
+    }
+  }
+
+  if (TouchBrightnessPointer == (TOUCHARRAYSIZE - 1))
+  {
+    TouchBrightnessPointer = 0;
+  }
+  else
+  {
+    TouchBrightnessPointer++;
+  }
+}
+
+void DiscoRoutine()
+{
+  byte hue = 0;
+  unsigned long DiscoTimer = millis() + DISCOLENGTH;
+  
+  while (millis() < DiscoTimer)
+  {
+    for (byte i = 0; i != NUM_LEDS; i++)
+    {
+      leds[i] = CHSV(hue, 255, 128);
+      hue++;
+    }
+    
+    FastLED.show();
+    delay(50);
+  }
 }
 
 void UpdateTrend()
@@ -304,7 +434,7 @@ void SerialDebugger()
     Serial.print(" ReadingCal: ");
     Serial.println(ReadingCal);
 
-    DebugTimer = millis() + 10;
+    DebugTimer = millis() + 2000;
   }
 
 }
