@@ -18,8 +18,8 @@
 
 #define TIMERVALUE 30
 
-#define TRENDTIMERVALUE 600000
-#define SWITCHOFFTIMERVALUE 18000000
+#define TRENDTIMERVALUE 600000 //Ten minutes per average
+#define SWITCHOFFTIMERVALUE 18000000 //Switch off after 6 hours
 
 //LED Set Up
 
@@ -100,8 +100,14 @@ void loop()
   UpdateLights();
 
   PrevLedBrightness = AverageBrightness;
-<<<<<<< HEAD
 
+  SleepChecker();
+
+  SerialDebugger();
+}
+
+void SleepChecker() //Checks for sleeping trends over time
+{
   if (millis() > TrendTimer)
   {
     UpdateTrend();
@@ -124,8 +130,6 @@ void loop()
   {
     WaitTillWake();
   }
-
-  //SerialDebugger();
 }
 
 void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
@@ -134,8 +138,6 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 
   bool Sleep = true;
   unsigned long WaitTimer = 0;
-
-  //RampLightsDown();
 
   FastLED.setBrightness(0);
   for (byte i = 0; i != NUM_LEDS; i++)
@@ -175,43 +177,8 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 
   TimerStarted = false; //reset the timer for the next sequence
   Serial.println("Return to main");
-=======
-  
-  SerialDebugger();
-
-  switch(State)
-  {
-    case 0: //Lights On normally
-    {
-      break;
-    }
-    case 1: //Start Timer
-    {
-      break;
-    }
-    case 2: //Timer Triggered
-    {
-      break;
-    }
-    case 3:
-    {
-      break;
-    }
-    default:
-    {
-      Serial.println("Default case run");
-      break;
-    }
-  }
->>>>>>> 95e2a0108f4e8091e104dbe6365e5f3d4f2f063b
 }
-//loop normally
-//if lights are on start timer
-//if lights go off stop timer
-//if timer clocks out turn lights off
-//if lights now turn off reset timer
 
-byte State = 0;
 void UpdateLights()
 {
   if (AverageBrightness != PrevLedBrightness)
