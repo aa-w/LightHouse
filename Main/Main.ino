@@ -1,7 +1,7 @@
 /*
-    _   _    _____  __ __      _____   ___  ___  _    _____   __
-   /_\ | |  | __\ \/ / \ \    / / _ \ / _ \|   \| |  | __\ \ / /
-  / _ \| |__| _| >  <   \ \/\/ / (_) | (_) | |) | |__| _| \ V /
+     _   _    _____  __ __      _____   ___  ___  _    _____   __
+    /_\ | |  | __\ \/ / \ \    / / _ \ / _ \|   \| |  | __\ \ / /
+   / _ \| |__| _| >  <   \ \/\/ / (_) | (_) | |) | |__| _| \ V /
   /_/ \_\____|___/_/\_\   \_/\_/ \___/ \___/|___/|____|___| |_|
 
 */
@@ -100,6 +100,7 @@ void loop()
   UpdateLights();
 
   PrevLedBrightness = AverageBrightness;
+<<<<<<< HEAD
 
   if (millis() > TrendTimer)
   {
@@ -174,8 +175,43 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 
   TimerStarted = false; //reset the timer for the next sequence
   Serial.println("Return to main");
-}
+=======
+  
+  SerialDebugger();
 
+  switch(State)
+  {
+    case 0: //Lights On normally
+    {
+      break;
+    }
+    case 1: //Start Timer
+    {
+      break;
+    }
+    case 2: //Timer Triggered
+    {
+      break;
+    }
+    case 3:
+    {
+      break;
+    }
+    default:
+    {
+      Serial.println("Default case run");
+      break;
+    }
+  }
+>>>>>>> 95e2a0108f4e8091e104dbe6365e5f3d4f2f063b
+}
+//loop normally
+//if lights are on start timer
+//if lights go off stop timer
+//if timer clocks out turn lights off
+//if lights now turn off reset timer
+
+byte State = 0;
 void UpdateLights()
 {
   if (AverageBrightness != PrevLedBrightness)
