@@ -431,7 +431,7 @@ void SerialDebugger()
     Serial.print(" ReadingCal: ");
     Serial.println(ReadingCal);
 
-    DebugTimer = millis() + 2000;
+    DebugTimer = millis() + 100;
   }
 
 }
