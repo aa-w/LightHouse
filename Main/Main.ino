@@ -141,16 +141,16 @@ void SleepChecker() //Checks for sleeping trends over time
   {
     UpdateTrend();
     TrendTimer = millis() + TRENDTIMERVALUE;
-    Serial.print("Trend: ");
-    Serial.println(LedTrendAverage);
+    //Serial.print("Trend: ");
+    //Serial.println(LedTrendAverage);
   }
 
   if ((TimerStarted == false) && (LedTrendAverage > 80))
   {
     SwitchOffTimer = millis() + SWITCHOFFTIMERVALUE;
 
-    Serial.print("TimerStarted: ");
-    Serial.println(TimerStarted);
+    //Serial.print("TimerStarted: ");
+    //Serial.println(TimerStarted);
 
     TimerStarted = true;
   }
@@ -163,7 +163,7 @@ void SleepChecker() //Checks for sleeping trends over time
 
 void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 {
-  Serial.println("SleepTillWake Triggered");
+  //Serial.println("SleepTillWake Triggered");
 
   bool Sleep = true;
   unsigned long WaitTimer = 0;
@@ -185,8 +185,6 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
       if (ReadingCal > 0)
       {
         Brightness = ((ReadingCal / LDRSCALE) * 100); //Brightness Percentage
-        Serial.print("Brightness: ");
-        Serial.println(Brightness);
       }
       else
       {
@@ -195,38 +193,37 @@ void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 
       if (Brightness > MinBrightness)
       {
-        Serial.print("Brightness: ");
-        Serial.println(Brightness);
-        Serial.println("Sleep Ended");
         Sleep = false;
       }
-      WaitTimer = millis() + 10000;
+      WaitTimer = millis() + 1000;
     }
   }
 
   TimerStarted = false; //reset the timer for the next sequence
-  Serial.println("Return to main");
+  //return to main
 }
 
 void ToggleWindows() //occationally turn on and off side window
 {
   if (millis() > WindowTimer)
   {
+    byte OffWindowCount = 0;
     for (byte i = 0; i != NUM_LEDS; i++)
     {
-      int Chance = random(0, 5);
-      if (Chance == 1)
+      int Chance = random(0, 10);
+      if ((Chance == 1) && (OffWindowCount != 2))
       {
         WindowState[i] = false;
+        OffWindowCount++;
       }
       else
       {
         WindowState[i] = true;
       }
-      Serial.print(WindowState[i] );
-      Serial.print(", ");
+      //Serial.print(WindowState[i] );
+      //Serial.print(", ");
     }
-    Serial.println("");
+    //Serial.println("");
     int TimerChange = random(1, 5);
     unsigned long MillisBuffer = (TimerChange * 5000);//60000
     WindowTimer = millis() + MillisBuffer;
@@ -305,7 +302,7 @@ void CheckForTouches()
 
   if ((millis() > MaxTouchTimer) && (CountTouches == true))
   {
-    Serial.println("TouchReset");
+    //Serial.println("TouchReset");
     CountTouches = false;
     TouchCount = 0;
   }
@@ -332,15 +329,15 @@ void CheckForTouches()
           CountTouches = true;
           TouchCount = 1;
           MaxTouchTimer = millis() + INSTANCETIME;
-          Serial.println("Touch Started");
+          //Serial.println("Touch Started");
         }
         else //touch count already started
         {
           if (millis() < MaxTouchTimer)
           {
             TouchCount++;
-            Serial.print("TouchCount: ");
-            Serial.println(TouchCount);
+            //Serial.print("TouchCount: ");
+            //Serial.println(TouchCount);
             if (TouchCount > NUMTOUCHES)
             {
               //touch count hit its disco time
@@ -351,7 +348,7 @@ void CheckForTouches()
           }
           else //Touches timed out clear all
           {
-            Serial.print("TouchReset");
+            //Serial.print("TouchReset");
             CountTouches = false;
             TouchCount = 0;
           }
