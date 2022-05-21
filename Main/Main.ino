@@ -163,8 +163,6 @@ void SleepChecker() //Checks for sleeping trends over time
 
 void WaitTillWake() //waits for a minimum of 60 percent brightness before waking
 {
-  //Serial.println("SleepTillWake Triggered");
-
   bool Sleep = true;
   unsigned long WaitTimer = 0;
 
