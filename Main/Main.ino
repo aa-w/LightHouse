@@ -410,10 +410,10 @@ void UpdateTrend()
 
 void CheckLDR()
 {
-  digitalWrite(6, HIGH);
+  digitalWrite(LDRPIN, HIGH);
   delay(5);
-  Reading = analogRead(A1);
-  digitalWrite(6, LOW);
+  Reading = analogRead(LDRREAD);
+  digitalWrite(LDRPIN, LOW);
 }
 
 void SerialDebugger()
