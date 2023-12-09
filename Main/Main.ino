@@ -92,7 +92,7 @@ void setup()
   FastLED.addLeds<LED_TYPE, LEDPIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   //LDR Setup
-  pinMode(6, OUTPUT);
+  pinMode(LDRPIN, OUTPUT);
 
 }
 
